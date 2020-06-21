@@ -1,4 +1,6 @@
 import csv
+import itertools
+from math import sqrt
 
 from src.direction import Direction
 
@@ -6,15 +8,27 @@ from src.direction import Direction
 class Puzzle:
     def __init__(self, board, head, head_char):
         self.board: list = board
+        self.flat_board: tuple = tuple(itertools.chain.from_iterable(board))
         self.head: tuple = head
         self.head_char: str = head_char
+        self.size: int = len(board)
 
     @staticmethod
     def get_board_from_csv(puzzle_class, path, head_char):
         with open(path) as f:
             board = list(csv.reader(f))
-            Puzzle.validate_puzzle(board)
+            Puzzle.validate_puzzle(board, path)
             head = Puzzle.find_head(board, head_char)
+        return puzzle_class(board, head, head_char)
+
+    @staticmethod
+    def get_board_flat(puzzle_class, flat_board ,head_char):
+        board = []
+        size = int(sqrt(len(flat_board)))
+        for x in range(size):
+            board.append(flat_board[x*size:size + x*size])
+        Puzzle.validate_puzzle(board)
+        head = Puzzle.find_head(board, head_char)
         return puzzle_class(board, head, head_char)
 
     @staticmethod
@@ -24,16 +38,18 @@ class Puzzle:
                 return i, sub_list.index(character)
 
     @staticmethod
-    def validate_puzzle(board):
+    def validate_puzzle(board, path='memory'):
         if not board:
-            raise Exception("Board must not be empty")
+            raise Exception(f"Board must not be empty <{path}>")
         if not all([len(i) == len(board) for i in board]):
-            raise Exception(f"Board is not square <{board}>")
+            raise Exception(f"Board is not square {board} in file '{path}'")
+        if len(list(itertools.chain.from_iterable(board))) != len(set(itertools.chain.from_iterable(board))):
+            raise Exception(f"Elements in Board have to be unique {board} in file '{path}'")
 
     @property
     def formatted_puzzle(self):
         row_formatted = ["\t|\t".join(x) for x in self.board]
-        board_formatted = ("\n" + ("-\t" * (2 * len(self.board) - 1) + "\n")).join(row_formatted)
+        board_formatted = ("\n" + ("-\t" * (2 * self.size - 1) + "\n")).join(row_formatted)
         return board_formatted
 
     def puzzle_field(self, coords):

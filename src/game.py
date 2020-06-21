@@ -1,7 +1,9 @@
 import random
 
-from src.board import UnsolvedPuzzle, PuzzleSolution
+from src.algorithm import ida_star_search
+from src.board import UnsolvedPuzzle, PuzzleSolution, Puzzle
 from src.direction import Direction
+from src.heuristics import Heuristic
 
 
 class Game:
@@ -9,13 +11,22 @@ class Game:
         self.unsolved_puzzle = unsolved_puzzle
         self.puzzle_solution = puzzle_solution
 
-    def make_step(self, display):
-        direction = random.choice(self.unsolved_puzzle.available_moves)
-        self.unsolved_puzzle.move(direction)
-        if self._check_win():
-            return "You Won" # Right now I don't have clue how it will be implemented
+    def run(self, display):
+        result = self.solve(ida_star_search, Heuristic.manhattan)
+        if self._check_win(result[1][-1]):
+            pass
+            # return "You Won" # Right now I don't have clue how it will be implemented
         if display:
-            print(self.unsolved_puzzle.formatted_puzzle)
+            path = [Puzzle.get_board_flat(Puzzle, x, 'x')for x in result[1]]
+            [print(node.formatted_puzzle, '\n') for node in path]
 
-    def _check_win(self):
-        return self.unsolved_puzzle == self.puzzle_solution
+
+    def analise_states(self):
+        pass
+
+    def solve(self, search_algorithm, heuristic):
+        return search_algorithm(self.unsolved_puzzle, self.puzzle_solution, heuristic, 1)
+
+
+    def _check_win(self, result_board):
+        return self.puzzle_solution.flat_board == result_board
