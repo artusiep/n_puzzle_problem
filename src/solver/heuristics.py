@@ -1,6 +1,3 @@
-import itertools
-
-
 class Heuristic:
     @staticmethod
     def hamming(candidate, solved, size): #aka tiles out of place
@@ -20,3 +17,8 @@ class Heuristic:
                 x = (i % size) - (ci % size)
                 res += abs(y) + abs(x)
         return res
+
+    @classmethod
+    def available_heuristic(cls):
+        method_list = [func for func in dir(cls) if callable(getattr(cls, func))]
+        return method_list[-2:]

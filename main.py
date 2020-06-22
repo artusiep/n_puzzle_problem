@@ -1,9 +1,11 @@
-from src.board import Puzzle, UnsolvedPuzzle, PuzzleSolution
-from src.game import Game
+from _ast import arg
 
-unsolved_puzzle = Puzzle.get_board_from_csv(UnsolvedPuzzle, "samples/sample8/initial.csv", "x")
-puzzle_solution = Puzzle.get_board_from_csv(PuzzleSolution, "samples/sample8/result.csv", "x")
-game = Game(unsolved_puzzle, puzzle_solution)
-game.run(True)
+from src.action import Action
+from src.cli import parse_arguments
 
+args = parse_arguments()
+if args.action == 'solve':
+    Action.solve(args)
+elif args.action == 'generate':
+    Action.generate(arg)
 
