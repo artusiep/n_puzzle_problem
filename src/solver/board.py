@@ -84,7 +84,7 @@ class Puzzle:
 
     @staticmethod
     def find_inversions(blank_char, flat_board):
-        int_flat_board = [int(x) if x != blank_char else 0 for x in flat_board]
+        int_flat_board = [int(x) for x in flat_board if x != blank_char]
         n = len(int_flat_board)
         inv_count = 0
         for i in range(n):
@@ -98,6 +98,12 @@ class Puzzle:
         row_formatted = ["\t|\t".join(x) for x in self.board]
         board_formatted = ("\n" + ("-\t" * (2 * self.size - 1) + "\n")).join(row_formatted)
         return board_formatted
+
+    @property
+    def csv_puzzle(self):
+        row_formatted = [",".join(x) for x in self.board]
+        csv_puzzle = "\n".join(row_formatted)
+        return csv_puzzle
 
     def puzzle_field(self, coords):
         return self.board[coords[0]][coords[1]]

@@ -14,7 +14,8 @@ class Game:
             if display:
                 path = [Puzzle.get_board_flat(Puzzle, x, 'x') for x in result[1]]
                 [print(node.formatted_puzzle, '\n---') for node in path]
-            print(result[2])
+                print(result[2])
+            return result
         else:
             print(f"""Finding solution failed. 
 Initial state: 
