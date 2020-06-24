@@ -19,6 +19,9 @@ def parse_arguments():
     solve_parser.add_argument('-f', '--final_state', choices=Puzzle.possible_final_states(), required=True)
     solve_parser.add_argument('-a', '--algorithm', choices=SearchAlgorithm.available_algorithms().keys(), required=True)
     solve_parser.add_argument('-b', '--blank_char', default='x')
+    solve_parser.add_argument('-F', '--to_file', type=argparse.FileType('a'))
+    solve_parser.add_argument('--show_path', action="store_true")
+    solve_parser.add_argument('--metrics', action="store_true")
 
     group = solve_parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-i', '--init_file', type=argparse.FileType('r'))
@@ -27,6 +30,7 @@ def parse_arguments():
     generate_parser.add_argument('-n', '--number', type=int, required=True)
     generate_parser.add_argument('-d', '--destination', type=str, default='./generated')
     generate_parser.add_argument('-r', '--reference_file', type=argparse.FileType('r'), required=True)
+    generate_parser.add_argument('-R', '--random_moves', type=int, required=True)
     generate_parser.add_argument('-b', '--blank_char', default='x')
 
     args = parser.parse_args()

@@ -1,3 +1,4 @@
+import json
 import time
 
 from src.solver.heuristics import Heuristic
@@ -5,6 +6,8 @@ from src.solver.heuristics import Heuristic
 
 class Metric:
     def __init__(self):
+        self.init_state = None
+        self.solution_state = None
         self.init_hamming = 0
         self.init_manhattan = 0
         self.search_alg = 0
@@ -14,9 +17,11 @@ class Metric:
         self.searched_nodes = 0
         self.time_per_node = 0
         self.path = 0
-        self.nodes_no = 0
+        self.paths_nodes_no = 0
 
-    def calc_heuristics(self, canidate, solved):
+    def init(self, canidate, solved):
+        self.init_state = canidate.state
+        self.solution_state = solved.state
         self.init_hamming = Heuristic.hamming(canidate, solved)
         self.init_manhattan = Heuristic.manhattan(canidate, solved)
 
@@ -28,27 +33,41 @@ class Metric:
 
     def increase_searched_nodes(self):
         self.searched_nodes += 1
-        return self.searched_nodes
 
     def set_path(self, path):
         self.path = path
-        return self.path
-
-    def increase_nodes_no(self):
-        self.nodes_no += 1
-        return self.nodes_no
+        self.paths_nodes_no = len(path)
 
     def timer_start(self):
         self.time_start = time.perf_counter()
 
     def timer_stop(self):
         self.time = time.perf_counter() - self.time_start
+        try:
+            self.time_per_node = self.time / self.searched_nodes
+        except ZeroDivisionError:
+            self.time_per_node = 0
 
     def timer_reset(self):
+        self.time_per_node = 0
         self.time = 0
 
     def __set_time(self, time):
         self.time = time
+
+    def summary_to_file(self, file, with_path=False):
+        if with_path:
+            self.path = [x.state for x in self.path]
+        else:
+            self.path = None
+        json.dump(self.__dict__, file)
+
+    def summary_to_console(self, with_path=False):
+        if with_path:
+            self.path = [x.state for x in self.path]
+        else:
+            self.path = None
+        print(json.dumps(self.__dict__))
 
 
 class RtaMetric(Metric):
@@ -65,32 +84,35 @@ class MockMetric(RtaMetric):
     def __init__(self):
         pass
 
-    def calc_heuristics(self, canidate, solved):
-        pass
+    def set_search_alg(self, alg):
+        return
 
-    def set_sorting_alg(self, alg):
-        pass
+    def set_heuristic(self, heuristic):
+        return
 
     def increase_searched_nodes(self):
-        pass
+        return
 
     def set_path(self, path):
-        pass
-
-    def increase_nodes_no(self):
-        pass
+        return
 
     def timer_start(self):
-        pass
+        return
 
     def timer_stop(self):
-        pass
+        return
 
     def timer_reset(self):
-        pass
+        return
 
     def __set_time(self, time):
-        pass
+        return
+
+    def summary_to_file(self, file, with_path=False):
+        return
+
+    def summary_to_console(self, with_path=False):
+        return
 
     def increase_return_no(self):
-        pass
+        return

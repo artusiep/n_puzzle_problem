@@ -4,7 +4,7 @@ from math import inf
 from typing import Callable, Collection
 
 from src.solver.board import State
-from src.utils.metric import MockMetric, Metric
+from src.utils.metric import MockMetric, Metric, RtaMetric
 
 
 class SearchAlgorithm:
@@ -22,45 +22,45 @@ class SearchAlgorithm:
                         metric: Metric = MockMetric()):
         visited_states = {}
 
-        def search(path, g, bound, evaluated):
-            evaluated += 1
+        def search(path, g, bound):
+            metric.increase_searched_nodes()
             node = path[0]
             f = g + HEURISTIC(node, solved)
             if f > bound:
-                return f, evaluated
+                return f
             if node.state == solved.state:
-                return True, evaluated
+                return True
             ret = inf
             moves = VISITOR_FUNC(node, visited_states)
             for m in moves:
                 if m not in path:
                     visited_states[m.state] = m
                     path.appendleft(m)
-                    t, evaluated = search(path, g + TRANSITION_COST(), bound, evaluated)
+                    t = search(path, g + TRANSITION_COST(), bound)
                     if t is True:
-                        return True, evaluated
+                        return True
                     if t < ret:
                         ret = t
                     path.popleft()
-            return ret, evaluated
+            return ret
 
         bound = HEURISTIC(initial_state, solved)
         path = deque([initial_state])
-        evaluated = 0
         while path:
-            t, evaluated = search(path, TRANSITION_COST(), bound, evaluated)
+            t = search(path, TRANSITION_COST(), bound)
             if t is True:
                 path.reverse()
-                return (True, path, {'space': len(path), 'time': evaluated})
+                metric.set_path(path)
+                return path
             elif t is inf:
-                return (False, [], {'space': len(path), 'time': evaluated})
+                return []
             else:
                 bound = t
 
     @staticmethod
     def rta_star_search(initial_state: State, solved: State, VISITOR_FUNC: Callable[..., Collection],
                         HEURISTIC: Callable[..., int], TRANSITION_COST: Callable[..., int] = lambda: 1,
-                        metric: Metric = MockMetric()):
+                        metric: RtaMetric = MockMetric()):
         def minimin(state, visited_states, heuristic, transition_cost):
             successors = VISITOR_FUNC(state, visited_states)
 
@@ -90,6 +90,7 @@ class SearchAlgorithm:
         while current_state.state != solved.state:
             evaluated += 1
             real_time_path.append(current_state)
+            metric.increase_searched_nodes()
             visited_states[current_state.state] = current_state
             # print(current_state.state)
             successors = VISITOR_FUNC(current_state, visited_states)
@@ -120,9 +121,14 @@ class SearchAlgorithm:
             except IndexError:
                 second_cost = inf
 
+            if current_state.parent and first.state == current_state.parent.state:
+                metric.increase_return_no()
+
             current_state.cost = second_cost
             current_state = first
 
         real_time_path.append(current_state)
+        metric.set_path(real_time_path)
+
         visited_states[current_state.state] = current_state
         return (True, real_time_path, {'space': len(real_time_path), 'time': evaluated})

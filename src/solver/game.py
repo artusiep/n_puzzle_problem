@@ -1,19 +1,22 @@
 from src.solver.algorithm import SearchAlgorithm
 from src.solver.board import UnsolvedPuzzle, PuzzleSolution, State
 from src.solver.heuristics import Heuristic
-from src.utils.metric import Metric
-
-EMPTY_TILE = 'x'
+from src.utils.metric import Metric, RtaMetric
 
 
 class Game:
+    EMPTY_TILE = 'x'
+
     def __init__(self, initial_state: UnsolvedPuzzle, result_state: PuzzleSolution):
         self.initial_state = initial_state
         self.result_state = result_state
 
-    def run(self, algorithm, heuristic):
-        metric_collector = Metric()
-        metric_collector.calc_heuristics(self.initial_state, self.result_state)
+    def run(self, algorithm, heuristic, metrics):
+        if algorithm == 'rta':
+            metric_collector = RtaMetric()
+        else:
+            metric_collector = Metric()
+        metric_collector.init(self.initial_state, self.result_state)
 
         algorithm_func = SearchAlgorithm.available_algorithms()[algorithm]
         heuristic_func = Heuristic.available_heuristics()[heuristic]
@@ -22,7 +25,7 @@ class Game:
         metric_collector.set_heuristic(heuristic)
 
         metric_collector.timer_start()
-        result = self.solve(algorithm_func, heuristic_func, metric_collector)
+        result = self.solve(algorithm_func, heuristic_func, metric_collector, metrics)
         metric_collector.timer_stop()
 
         return result, metric_collector
@@ -45,7 +48,7 @@ class Game:
     @staticmethod
     def possible_moves(state, visited):
         res = []
-        y = state.state.index(EMPTY_TILE)
+        y = state.state.index(Game.EMPTY_TILE)
         size = state.size
         if y % size > 0:
             left = Game.clone_and_swap(state.state, y, y - 1)
@@ -61,7 +64,10 @@ class Game:
             res.append(Game.choose_next_move(down, size, state, visited))
         return res
 
-    def solve(self, search_algorithm, heuristic, metric_collector):
-        search_result = search_algorithm(self.initial_state, self.result_state, Game.possible_moves, heuristic,
-                                         metric=metric_collector)
+    def solve(self, search_algorithm, heuristic, metric_collector, metrics):
+        if metrics:
+            search_result = search_algorithm(self.initial_state, self.result_state, Game.possible_moves, heuristic,
+                                             metric=metric_collector)
+        else:
+            search_result = search_algorithm(self.initial_state, self.result_state, Game.possible_moves, heuristic)
         return search_result
