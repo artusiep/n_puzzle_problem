@@ -1,63 +1,128 @@
+import heapq
 from collections import deque
 from math import inf
+from typing import Callable, Collection
 
-EMPTY_TILE = 'x'
+from src.solver.board import State
+from src.utils.metric import MockMetric, Metric
 
-def clone_and_swap(data,y0,y1):
-    clone = list(data)
-    tmp = clone[y0]
-    clone[y0] = clone[y1]
-    clone[y1] = tmp
-    return tuple(clone)
 
-def possible_moves(data, size):
-    res = []
-    y = data.index(EMPTY_TILE)
-    if y % size > 0:
-        left = clone_and_swap(data,y,y-1)
-        res.append(left)
-    if y % size + 1 < size:
-        right = clone_and_swap(data,y,y+1)
-        res.append(right)
-    if y - size >= 0:
-        up = clone_and_swap(data,y,y-size)
-        res.append(up)
-    if y + size < len(data):
-        down = clone_and_swap(data,y,y+size)
-        res.append(down)
-    return res
+class SearchAlgorithm:
+    @classmethod
+    def available_algorithms(cls):
+        algorithms = {
+            'rta': cls.rta_star_search,
+            'ida': cls.ida_star_search
+        }
+        return algorithms
 
-def ida_star_search(puzzle, solved, HEURISTIC, TRANSITION_COST):
-    def search(path, g, bound, evaluated):
-        evaluated += 1
-        node = path[0]
-        f = g + HEURISTIC(node, solved.flat_board, solved.size)
-        if f > bound:
-            return f, evaluated
-        if node == solved.flat_board:
-            return True, evaluated
-        ret = inf
-        moves = possible_moves(node,  solved.size)
-        for m in moves:
-            if m not in path:
-                path.appendleft(m)
-                t, evaluated = search(path, g + TRANSITION_COST, bound, evaluated)
-                if t is True:
-                    return True, evaluated
-                if t < ret:
-                    ret = t
-                path.popleft()
-        return ret, evaluated
+    @staticmethod
+    def ida_star_search(initial_state: State, solved: State, VISITOR_FUNC: Callable[..., Collection],
+                        HEURISTIC: Callable[..., int], TRANSITION_COST: Callable[..., int] = lambda: 1,
+                        metric: Metric = MockMetric()):
+        visited_states = {}
 
-    bound = HEURISTIC(puzzle.flat_board, solved.flat_board,  solved.size)
-    path = deque([puzzle.flat_board])
-    evaluated = 0
-    while path:
-        t, evaluated = search(path, 0, bound, evaluated)
-        if t is True:
-            path.reverse()
-            return (True, path, {'space':len(path), 'time':evaluated})
-        elif t is inf:
-            return (False, [], {'space':len(path), 'time':evaluated})
-        else:
-            bound = t
+        def search(path, g, bound, evaluated):
+            evaluated += 1
+            node = path[0]
+            f = g + HEURISTIC(node, solved)
+            if f > bound:
+                return f, evaluated
+            if node.state == solved.state:
+                return True, evaluated
+            ret = inf
+            moves = VISITOR_FUNC(node, visited_states)
+            for m in moves:
+                if m not in path:
+                    visited_states[m.state] = m
+                    path.appendleft(m)
+                    t, evaluated = search(path, g + TRANSITION_COST(), bound, evaluated)
+                    if t is True:
+                        return True, evaluated
+                    if t < ret:
+                        ret = t
+                    path.popleft()
+            return ret, evaluated
+
+        bound = HEURISTIC(initial_state, solved)
+        path = deque([initial_state])
+        evaluated = 0
+        while path:
+            t, evaluated = search(path, TRANSITION_COST(), bound, evaluated)
+            if t is True:
+                path.reverse()
+                return (True, path, {'space': len(path), 'time': evaluated})
+            elif t is inf:
+                return (False, [], {'space': len(path), 'time': evaluated})
+            else:
+                bound = t
+
+    @staticmethod
+    def rta_star_search(initial_state: State, solved: State, VISITOR_FUNC: Callable[..., Collection],
+                        HEURISTIC: Callable[..., int], TRANSITION_COST: Callable[..., int] = lambda: 1,
+                        metric: Metric = MockMetric()):
+        def minimin(state, visited_states, heuristic, transition_cost):
+            successors = VISITOR_FUNC(state, visited_states)
+
+            proccessed_successprs = []
+
+            for move in successors:
+                move.cost = heuristic(move, solved) + transition_cost()
+                proccessed_successprs.append(move)
+            minimal = min(proccessed_successprs, key=lambda x: x.cost)
+            return minimal
+
+        def init(initial_state, heuristic, transition_cost):
+            successors = VISITOR_FUNC(initial_state, {})
+            cost = heuristic(initial_state, solved)
+            for move in successors:
+                new_cost = heuristic(move, solved)
+                if cost > new_cost:
+                    cost = new_cost + transition_cost()
+            initial_state.cost = cost
+            return initial_state
+
+        evaluated = 0
+        init = init(initial_state, HEURISTIC, TRANSITION_COST)
+        visited_states = {}
+        real_time_path = []
+        current_state = init
+        while current_state.state != solved.state:
+            evaluated += 1
+            real_time_path.append(current_state)
+            visited_states[current_state.state] = current_state
+            # print(current_state.state)
+            successors = VISITOR_FUNC(current_state, visited_states)
+            elems = []
+
+            for successor in successors:
+                # Winning state
+                if successor.state == solved.state:
+                    successor.cost = 0
+                    heapq.heappush(elems, (0, successor))
+                if successor.cost:
+                    heapq.heappush(elems, (successor.cost + TRANSITION_COST(), successor))
+                elif successor.state not in visited_states.keys():
+                    minimin_result = minimin(successor, visited_states, HEURISTIC, TRANSITION_COST)
+                    best = minimin_result
+                    successor.cost = best.cost
+                    heapq.heappush(elems, (best.cost + TRANSITION_COST(), successor))
+                elif not current_state.parent:
+                    best = visited_states[successor.state]
+                    heapq.heappush(elems, (best.cost + TRANSITION_COST(), best))
+
+            if current_state.parent:
+                heapq.heappush(elems, (current_state.parent.cost - TRANSITION_COST(), current_state.parent))
+
+            first_cost, first = heapq.heappop(elems)
+            try:
+                second_cost, second = heapq.heappop(elems)
+            except IndexError:
+                second_cost = inf
+
+            current_state.cost = second_cost
+            current_state = first
+
+        real_time_path.append(current_state)
+        visited_states[current_state.state] = current_state
+        return (True, real_time_path, {'space': len(real_time_path), 'time': evaluated})

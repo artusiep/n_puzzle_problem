@@ -1,24 +1,33 @@
+from src.solver.board import State
+
+
 class Heuristic:
     @staticmethod
-    def hamming(candidate, solved, size): #aka tiles out of place
+    def hamming(candidate: State, solved: State):
+        size = candidate.size
         res = 0
         for i in range(size*size):
-            if candidate[i] != 0 and candidate[i] != solved[i]:
+            if candidate.state[i] != 0 and candidate.state[i] != solved.state[i]:
                 res += 1
         return res
 
     @staticmethod
-    def manhattan(candidate, solved, size):
+    def manhattan(candidate: State, solved: State, size=None):
+        if not size:
+            size = candidate.size
         res = 0
         for i in range(size*size):
-            if candidate[i] != 0 and candidate[i] != solved[i]:
-                ci = solved.index(candidate[i])
+            if candidate.state[i] != 0 and candidate.state[i] != solved.state[i]:
+                ci = solved.state.index(candidate.state[i])
                 y = (i // size) - (ci // size)
                 x = (i % size) - (ci % size)
                 res += abs(y) + abs(x)
         return res
 
     @classmethod
-    def available_heuristic(cls):
-        method_list = [func for func in dir(cls) if callable(getattr(cls, func))]
-        return method_list[-2:]
+    def available_heuristics(cls):
+        heuristics = {
+            'manhattan': cls.manhattan,
+            'hamming': cls.hamming
+        }
+        return heuristics

@@ -6,18 +6,38 @@ from src.solver.direction import Direction
 from src.solver.state_generator import StateGenerator
 
 
-class Puzzle:
-    final_states = {
-        'blank_first': StateGenerator.generate_blank_first_state,
-        'blank_last': StateGenerator.generate_blank_last_state
-    }
+class State:
+    def __init__(self, state, size, cost=None, parent=None):
+        self.state = state
+        self.size: int = size
+        self.parent = parent
+        self.cost = cost
+        self.cost_function = lambda x: 1
+
+    def __hash__(self):
+        return hash(self.state)
+
+    def __lt__(self, other):
+        return self.cost_function(self) < self.cost_function(other)
+
+    def __le__(self, other):
+        return self.cost_function(self) <= self.cost_function(other)
+
+
+class Puzzle(State):
+    @classmethod
+    def __get_final_states(cls):
+        final_states = {
+            'blank_first': StateGenerator.generate_blank_first_state,
+            'blank_last': StateGenerator.generate_blank_last_state
+        }
+        return final_states
 
     def __init__(self, board, blank, blank_char):
+        super().__init__(tuple(itertools.chain.from_iterable(board)), len(board))
         self.board: list = board
-        self.flat_board: tuple = tuple(itertools.chain.from_iterable(board))
         self.blank: tuple = blank
         self.blank_char: str = blank_char
-        self.size: int = len(board)
 
     @staticmethod
     def get_board_from_csv(puzzle_class, path, blank_char):
@@ -35,11 +55,11 @@ class Puzzle:
         return puzzle_class(board, blank, blank_char)
 
     @staticmethod
-    def get_board_flat(puzzle_class, flat_board, blank_char):
+    def get_board_flat(puzzle_class, state, blank_char):
         board = []
-        size = int(sqrt(len(flat_board)))
+        size = int(sqrt(len(state)))
         for x in range(size):
-            board.append(flat_board[x * size:size + x * size])
+            board.append(state[x * size:size + x * size])
         Puzzle.validate_puzzle(board)
         blank = Puzzle.find_blank(board, blank_char)
         return puzzle_class(board, blank, blank_char)
@@ -47,11 +67,11 @@ class Puzzle:
     @staticmethod
     def generate_solution(init_state, final_state, blank_char):
         # noinspection PyArgumentList
-        return Puzzle.final_states[final_state](blank_char, init_state.size)
+        return Puzzle.__get_final_states()[final_state](blank_char, init_state.size)
 
     @classmethod
     def possible_final_states(cls):
-        return Puzzle.final_states.keys()
+        return Puzzle.__get_final_states().keys()
 
     @staticmethod
     def find_blank(board, blank_char):
@@ -69,27 +89,27 @@ class Puzzle:
             raise Exception(f"Elements in Board have to be unique {board} in file '{path}'")
 
     def is_solvable(self, blank_char, final_state):
-        flat_board = self.flat_board
+        state = self.state
         if final_state == 'blank_last':
-            flat_board = list(reversed(flat_board))
-        inversions_no = self.find_inversions(blank_char, flat_board)
+            state = list(reversed(state))
+        inversions_no = self.find_inversions(blank_char, state)
         if inversions_no % 2 == 0 and self.size % 2 == 1:
             return True
         if self.size % 2 == 0:
-            if (self.size - flat_board.index(blank_char) // self.size) % 2 == 0 and inversions_no % 2 == 1:
+            if (self.size - state.index(blank_char) // self.size) % 2 == 0 and inversions_no % 2 == 0:
                 return True
-            if (self.size - flat_board.index(blank_char) // self.size) % 2 == 1 and inversions_no % 2 == 0:
+            if (self.size - state.index(blank_char) // self.size) % 2 == 1 and inversions_no % 2 == 1:
                 return True
         return False
 
     @staticmethod
-    def find_inversions(blank_char, flat_board):
-        int_flat_board = [int(x) for x in flat_board if x != blank_char]
-        n = len(int_flat_board)
+    def find_inversions(blank_char, state):
+        int_state = [int(x) for x in state if x != blank_char]
+        n = len(int_state)
         inv_count = 0
         for i in range(n):
             for j in range(i + 1, n):
-                if int_flat_board[i] > int_flat_board[j]:
+                if int_state[i] > int_state[j]:
                     inv_count += 1
         return inv_count
 

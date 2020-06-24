@@ -1,0 +1,51 @@
+EMPTY_TILE = 0
+
+
+def clone_and_swap(data, y0, y1):
+    clone = list(data)
+    tmp = clone[y0]
+    clone[y0] = clone[y1]
+    clone[y1] = tmp
+    return tuple(clone)
+
+
+def possible_moves(data, size):
+    res = []
+    y = data.index(EMPTY_TILE)
+    if y % size > 0:
+        left = clone_and_swap(data, y, y - 1)
+        res.append(left)
+    if y % size + 1 < size:
+        right = clone_and_swap(data, y, y + 1)
+        res.append(right)
+    if y - size >= 0:
+        up = clone_and_swap(data, y, y - size)
+        res.append(up)
+    if y + size < len(data):
+        down = clone_and_swap(data, y, y + size)
+        res.append(down)
+    return res
+
+
+def minimin(actual_state, size, heuristic, g_func):
+    first_second = []
+    for state in possible_moves(actual_state, size):
+        lookahead_f = []
+        for lookahead_state in possible_moves(state, size):
+            f = heuristic(lookahead_state) + g_func(state, lookahead_state)
+            lookahead_f.append((f, lookahead_state))
+        first_second.append(find_best(lookahead_f))
+    return find_first_second(first_second)
+
+
+def rta_star(s_start, goal_state, size, heuristic_func, g_func):
+    actual_state = s_start
+    h, _ = minimin(actual_state, size, heuristic_func, g_func)
+    register = {}
+    while actual_state != goal_state:
+        first, second = minimin(actual_state, size, heuristic_func, g_func)
+        if heuristic_func(register[-1]) - g_func(actual_state, register[-1]) < first.cost:
+            actual_state = reversion(register, first, second)
+            continue
+        actual_state = move_forward(register, first, second)
+    return register

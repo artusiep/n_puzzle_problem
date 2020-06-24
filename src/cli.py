@@ -1,5 +1,7 @@
 import argparse
 
+from src.solver.algorithm import SearchAlgorithm
+
 
 def parse_arguments():
     from src.solver.board import Puzzle
@@ -13,8 +15,9 @@ def parse_arguments():
     solve_parser = subparsers.add_parser("solve")
     generate_parser = subparsers.add_parser("generate")
 
-    solve_parser.add_argument('-H', '--heuristic', choices=Heuristic.available_heuristic(), required=True)
+    solve_parser.add_argument('-H', '--heuristic', choices=Heuristic.available_heuristics().keys(), required=True)
     solve_parser.add_argument('-f', '--final_state', choices=Puzzle.possible_final_states(), required=True)
+    solve_parser.add_argument('-a', '--algorithm', choices=SearchAlgorithm.available_algorithms().keys(), required=True)
     solve_parser.add_argument('-b', '--blank_char', default='x')
 
     group = solve_parser.add_mutually_exclusive_group(required=True)

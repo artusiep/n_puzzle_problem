@@ -1,6 +1,9 @@
-from src.solver.algorithm import ida_star_search
-from src.solver.board import UnsolvedPuzzle, PuzzleSolution, Puzzle
+from src.solver.algorithm import SearchAlgorithm
+from src.solver.board import UnsolvedPuzzle, PuzzleSolution, State
 from src.solver.heuristics import Heuristic
+from src.utils.metric import Metric
+
+EMPTY_TILE = 'x'
 
 
 class Game:
@@ -8,27 +11,57 @@ class Game:
         self.initial_state = initial_state
         self.result_state = result_state
 
-    def run(self, display):
-        result = self.solve(ida_star_search, Heuristic.manhattan)
-        if self._check_win(result[1][-1]):
-            if display:
-                path = [Puzzle.get_board_flat(Puzzle, x, 'x') for x in result[1]]
-                [print(node.formatted_puzzle, '\n---') for node in path]
-                print(result[2])
-            return result
+    def run(self, algorithm, heuristic):
+        metric_collector = Metric()
+        metric_collector.calc_heuristics(self.initial_state, self.result_state)
+
+        algorithm_func = SearchAlgorithm.available_algorithms()[algorithm]
+        heuristic_func = Heuristic.available_heuristics()[heuristic]
+
+        metric_collector.set_search_alg(algorithm)
+        metric_collector.set_heuristic(heuristic)
+
+        metric_collector.timer_start()
+        result = self.solve(algorithm_func, heuristic_func, metric_collector)
+        metric_collector.timer_stop()
+
+        return result, metric_collector
+
+    @staticmethod
+    def clone_and_swap(data, y0, y1):
+        clone = list(data)
+        tmp = clone[y0]
+        clone[y0] = clone[y1]
+        clone[y1] = tmp
+        return tuple(clone)
+
+    @staticmethod
+    def choose_next_move(element, size, parent, visited):
+        if element in visited.keys():
+            return visited[element]
         else:
-            print(f"""Finding solution failed. 
-Initial state: 
-{self.initial_state.formatted_puzzle}
-Solution state
-{self.result_state.formatted_puzzle}
-""")
+            return State(element, size, parent=parent)
 
-    def analise_states(self):
-        pass
+    @staticmethod
+    def possible_moves(state, visited):
+        res = []
+        y = state.state.index(EMPTY_TILE)
+        size = state.size
+        if y % size > 0:
+            left = Game.clone_and_swap(state.state, y, y - 1)
+            res.append(Game.choose_next_move(left, size, state, visited))
+        if y % size + 1 < size:
+            right = Game.clone_and_swap(state.state, y, y + 1)
+            res.append(Game.choose_next_move(right, size, state, visited))
+        if y - size >= 0:
+            up = Game.clone_and_swap(state.state, y, y - size)
+            res.append(Game.choose_next_move(up, size, state, visited))
+        if y + size < len(state.state):
+            down = Game.clone_and_swap(state.state, y, y + size)
+            res.append(Game.choose_next_move(down, size, state, visited))
+        return res
 
-    def solve(self, search_algorithm, heuristic):
-        return search_algorithm(self.initial_state, self.result_state, heuristic, 1)
-
-    def _check_win(self, result_board):
-        return self.result_state.flat_board == result_board
+    def solve(self, search_algorithm, heuristic, metric_collector):
+        search_result = search_algorithm(self.initial_state, self.result_state, Game.possible_moves, heuristic,
+                                         metric=metric_collector)
+        return search_result
