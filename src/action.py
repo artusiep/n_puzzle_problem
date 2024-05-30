@@ -38,7 +38,6 @@ class Action:
 
     @staticmethod
     def __solve_batch(args):
-        result = []
         os.chdir(args.batch)
         files = glob.glob("*.puzzle")
         print_progress_bar(0, len(files), prefix='Progress:', suffix='Complete', length=50)
